@@ -4,7 +4,7 @@
   // Required inputs
   local required = ' in a deployment is required',
   name:: error '.name' + required,
-  selector:: error '.selector' + required,
+  labels:: error '.labels' + required,
   containers:: error '.containers' + required,
 
   // Definition
@@ -18,14 +18,14 @@
   spec: {
     replicas: 1,
     selector: {
-      matchLabels: $.selector,
+      matchLabels: $.labels,
     },
     template: (import 'pod_template_spec.libsonnet') + {
       name: $.name,
       containers: $.containers,
       volumes: $.volumes,
       metadata+: {
-        labels: $.selector,
+        labels: $.labels,
       }
     },
     strategy: {

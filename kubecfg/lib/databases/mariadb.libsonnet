@@ -14,13 +14,18 @@ local serviceTpl = import '../templates/service.libsonnet';
   // Definition
   image:: 'mysql:5.7',
   port:: 3306,
+  pvc:: null,
+
+  volume:: if $.pvc != null then { name: $.pvc.name },
 
   deploy: statefulsetTpl + {
     name: $.name,
-    selector: $.labels,
+    labels: $.labels,
     metadata+:{
       labels+: $.labels,
     },
+    [if $.pvc != null then 'pvc']: $.pvc,
+    [if $.volume != null then 'volumes']: [$.volume],
     serviceName: $.svc.name,
     containers: [
       containerTpl + {
@@ -34,6 +39,12 @@ local serviceTpl = import '../templates/service.libsonnet';
         ],
         ports: [
           { containerPort: $.port },
+        ],
+        [if $.volume != null then 'volumeMounts']: [
+          {
+            name: $.volume.name,
+            mountPath: '/var/lib/mysql',
+          },
         ],
       },
     ],

@@ -3,6 +3,8 @@ local containerTpl = import 'lib/templates/container.libsonnet';
 local deploymentTpl = import 'lib/templates/deployment.libsonnet';
 local serviceTpl = import 'lib/templates/service.libsonnet';
 local ingressTpl = import 'lib/templates/ingress.libsonnet';
+local pvTpl = import 'lib/templates/pv.libsonnet';
+local pvcTpl = import 'lib/templates/pvc.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 ////
 
@@ -28,7 +30,7 @@ local public = true;
 
     deploy: deploymentTpl + {
       name: 'frontend',
-      selector: frontendLabels,
+      labels: frontendLabels,
       metadata+:{
         labels+: frontendLabels,
       },
@@ -78,7 +80,7 @@ local public = true;
 
     deploy: deploymentTpl + {
       name: 'catalogue',
-      selector: catalogueLabels,
+      labels: catalogueLabels,
       metadata+:{
         labels+: catalogueLabels,
       },
@@ -118,20 +120,34 @@ local public = true;
       dbPassword: dbPassword,
       dbName: dbName,
       image: 'weaveworksdemos/catalogue-db:0.3.5',
+      // persistence
+      pvc: pvcTpl + {
+        name: 'catalogue-db',
+        storage: '20Gi',
+        // selector: {
+        //   matchLabels: $.catalogue.db.labels,
+        // },
+      },
+      // pv: pvTpl + {
+      //   name: 'catalogue-db',
+      //   storage: $.catalogue.db.pvc.storage,
+      //   labels: $.catalogue.db.labels,
+      //   spec+: {
+      //     gcePersistentDisk: {
+      //       fsType: 'ext4',
+      //       pdName: 'sockshop-catalogue-db',
+      //     },
+      //   },
+      // },
     },
   },
 
+  // TODO: add the other microservices
   order: {},
-
   payment: {},
-
   user: {},
-
   cart: {},
-
   shipping: {},
-
   queue: {},
-
   'queue-master': {},
 }

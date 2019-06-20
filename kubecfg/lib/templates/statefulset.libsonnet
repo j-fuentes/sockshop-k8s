@@ -7,16 +7,20 @@ deploymentTpl + {
   // Required inputs
   local required = ' in a statefulset is required',
   name:: error '.name' + required,
-  selector:: error '.selector' + required,
+  labels:: error '.labels' + required,
   containers:: error '.containers' + required,
   serviceName:: error '.serviceName' + required,
 
   // Definition
+  volumes:: [],
+  pvc:: null,
+
   apiVersion: 'apps/v1',
   kind: 'StatefulSet',
 
   spec+: {
     strategy:: null,
+    [if $.pvc != null then 'volumeClaimTemplates']: [$.pvc],
     serviceName: $.serviceName,
   },
 }
