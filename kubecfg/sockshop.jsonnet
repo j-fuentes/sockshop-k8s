@@ -3,6 +3,7 @@ local containerTpl = import 'lib/templates/container.libsonnet';
 local deploymentTpl = import 'lib/templates/deployment.libsonnet';
 local serviceTpl = import 'lib/templates/service.libsonnet';
 local ingressTpl = import 'lib/templates/ingress.libsonnet';
+local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 ////
 
 // Params
@@ -26,7 +27,7 @@ local public = true;
     } + commonLabels,
 
     deploy: deploymentTpl + {
-      name: 'frontend-deploy',
+      name: 'frontend',
       selector: frontendLabels,
       metadata+:{
         labels+: frontendLabels,
@@ -45,7 +46,7 @@ local public = true;
     },
 
     svc: serviceTpl + {
-      name: 'frontend-svc',
+      name: 'frontend',
       // The native GKE Ingress controller only supports NodePort services
       type: 'NodePort',
       selector: frontendLabels,
@@ -65,13 +66,66 @@ local public = true;
     },
   },
 
+  catalogue: {
+    local catalogueLabels = {
+      tier: 'catalogue',
+      tier2: 'server',
+    } + commonLabels,
+
+    local dbUser = 'catalogue',
+    local dbPassword = 'very-secure-password',
+    local dbName = 'catalogue',
+
+    deploy: deploymentTpl + {
+      name: 'catalogue',
+      selector: catalogueLabels,
+      metadata+:{
+        labels+: catalogueLabels,
+      },
+      containers: [
+        containerTpl + {
+          // https://github.com/microservices-demo/catalogue
+          image: 'weaveworksdemos/catalogue:0.3.5',
+          name: 'catalogue',
+          command: ['/app', '-port=80', '-DSN='+dbUser+':'+dbPassword+'@tcp('+$.catalogue.db.svc.name+':'+3306+')/'+dbName],
+          ports: [
+            { containerPort: 80 },
+          ],
+          probeHttpGet: { path: '/health', port: 80 },
+        },
+      ],
+    },
+
+    svc: serviceTpl + {
+      name: 'catalogue',
+      selector: catalogueLabels,
+      ports: [
+        {
+          name: 'web',
+          port: 80,
+          targetPort: 80,
+        },
+      ],
+    },
+
+    db: mariadbTpl + {
+      name: 'catalogue-db',
+      labels: {
+        tier: 'catalogue',
+        tier2: 'db',
+      } + commonLabels,
+      dbUser: dbUser,
+      dbPassword: dbPassword,
+      dbName: dbName,
+      image: 'weaveworksdemos/catalogue-db:0.3.5',
+    },
+  },
+
   order: {},
 
   payment: {},
 
   user: {},
-
-  catalogue: {},
 
   cart: {},
 
