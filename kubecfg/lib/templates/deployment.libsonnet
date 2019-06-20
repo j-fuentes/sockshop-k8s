@@ -9,6 +9,7 @@
 
   // Definition
   volumes:: [],
+  initContainers:: [],
 
   apiVersion: 'extensions/v1beta1',
   kind: 'Deployment',
@@ -22,6 +23,7 @@
     },
     template: (import 'pod_template_spec.libsonnet') + {
       name: $.name,
+      initContainers: $.initContainers,
       containers: $.containers,
       volumes: $.volumes,
       metadata+: {

@@ -17,6 +17,12 @@ local serviceTpl = import '../templates/service.libsonnet';
   pvc:: null,
 
   volume:: if $.pvc != null then { name: $.pvc.name },
+  volumeMounts:: [
+    {
+      name: $.volume.name,
+      mountPath: '/var/lib/mysql',
+    },
+  ],
 
   deploy: statefulsetTpl + {
     name: $.name,
@@ -27,6 +33,16 @@ local serviceTpl = import '../templates/service.libsonnet';
     [if $.pvc != null then 'pvc']: $.pvc,
     [if $.volume != null then 'volumes']: [$.volume],
     serviceName: $.svc.name,
+    initContainers: [
+      // GCE initializes the disk with a lost+found folder. This mislead the entrypoint in the mysql container,
+      // since it checks if the volume is empty or not to decide if it is the first run.
+      containerTpl + {
+        name: 'prepare-volume',
+        image: 'bash:5.0.7',
+        [if $.volume != null then 'volumeMounts']: $.volumeMounts,
+        command: ['bash', '-c', 'if [ ! -d \'/var/lib/mysql/mysql\' ]; then rm -rf /var/lib/mysql/lost+found; fi'],
+      },
+    ],
     containers: [
       containerTpl + {
         name: 'db',
@@ -40,12 +56,7 @@ local serviceTpl = import '../templates/service.libsonnet';
         ports: [
           { containerPort: $.port },
         ],
-        [if $.volume != null then 'volumeMounts']: [
-          {
-            name: $.volume.name,
-            mountPath: '/var/lib/mysql',
-          },
-        ],
+        [if $.volume != null then 'volumeMounts']: $.volumeMounts,
       },
     ],
   },

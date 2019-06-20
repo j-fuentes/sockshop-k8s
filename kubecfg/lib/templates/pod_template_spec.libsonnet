@@ -8,11 +8,13 @@
 
   // Definition
   volumes:: [],
+  initContainers:: [],
 
   metadata: {
     name: $.name,
   },
   spec: {
+    initContainers: $.initContainers,
     containers: $.containers,
     volumes: $.volumes,
     restartPolicy: 'Always',
