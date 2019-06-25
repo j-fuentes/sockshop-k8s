@@ -6,6 +6,7 @@ local ingressTpl = import 'lib/templates/ingress.libsonnet';
 local pvcTpl = import 'lib/templates/pvc.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 local redisTpl = import 'lib/databases/redis.libsonnet';
+local mongoTpl = import 'lib/databases/mongo.libsonnet';
 // mixins
 local containerSec = import 'lib/mixins/container_security.libsonnet';
 
@@ -33,9 +34,6 @@ local public = true;
     deploy: deploymentTpl + {
       name: 'frontend',
       labels: frontendLabels,
-      metadata+:{
-        labels+: frontendLabels,
-      },
       containers: [
         containerTpl + {
           // https://github.com/microservices-demo/front-end
@@ -91,9 +89,6 @@ local public = true;
     deploy: deploymentTpl + {
       name: 'catalogue',
       labels: catalogueLabels,
-      metadata+:{
-        labels+: catalogueLabels,
-      },
       containers: [
         containerTpl + {
           // https://github.com/microservices-demo/catalogue
@@ -128,9 +123,86 @@ local public = true;
       dbPassword: dbPassword,
       dbName: dbName,
       image: 'weaveworksdemos/catalogue-db:0.3.5',
-      // persistence
       pvc: pvcTpl + {
         name: 'catalogue-db',
+        storage: '20Gi',
+        storageClassName: 'standard',
+      },
+    },
+  },
+
+  carts: {
+    local cartsLabels = {
+      tier: 'carts',
+      tier2: 'server',
+    } + commonLabels,
+
+    // The carts application is not easy to configure externally and it defaults to empty user and password.
+    local dbUser = null,
+    local dbPassword = null,
+    local dbName = null,
+
+    deploy:  deploymentTpl + {
+      name: 'carts',
+      labels: cartsLabels,
+      containers: [
+        containerTpl + {
+          // https://github.com/microservices-demo/carts
+          image: 'weaveworksdemos/carts:0.4.8',
+          name: 'carts',
+          ports: [
+            { containerPort: 80 },
+          ],
+          env: [
+            {
+              name: 'JAVA_OPTS',
+              value: '-Xms64m -Xmx128m -XX:PermSize=32m -XX:MaxPermSize=64m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom',
+            },
+          ],
+          volumeMounts: [
+            {
+              name: 'tmp',
+              mountPath: '/tmp',
+            },
+          ],
+          probeHttpGet: { path: '/health', port: 80 },
+          local probesTimes = {
+            initialDelaySeconds: 60,
+            periodSeconds: 15,
+          },
+          livenessProbe+: probesTimes,
+          readinessProbe+: probesTimes,
+        } + containerSec.capabilities.dropAll() + containerSec.capabilities.add(['NET_BIND_SERVICE'])
+        + containerSec.filesystem.readOnly() + containerSec.user.nonRoot(),
+      ],
+      volumes: [
+        {
+          name: 'tmp',
+          emptyDir: { medium: 'Memory' },
+        },
+      ],
+    },
+
+    svc: serviceTpl + {
+      name: 'carts',
+      selector: cartsLabels,
+      ports: [
+        {
+          name: 'web',
+          port: 80,
+          targetPort: 80,
+        },
+      ],
+    },
+
+    db: mongoTpl + {
+      name: 'carts-db',
+      labels: cartsLabels + { tier2: 'db' },
+      dbUser: dbUser,
+      dbPassword: dbPassword,
+      dbName: dbName,
+      pvc: pvcTpl + {
+        name: 'cart-db',
         storage: '20Gi',
         storageClassName: 'standard',
       },
@@ -141,7 +213,6 @@ local public = true;
   order: {},
   payment: {},
   user: {},
-  cart: {},
   shipping: {},
   queue: {},
   'queue-master': {},

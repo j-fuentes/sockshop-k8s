@@ -16,6 +16,7 @@
   kind: 'Deployment',
   metadata: {
     name: $.name,
+    labels: $.labels,
   },
   spec: {
     replicas: $.replicas,
