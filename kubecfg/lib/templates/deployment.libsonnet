@@ -10,6 +10,7 @@
   // Definition
   volumes:: [],
   initContainers:: [],
+  replicas:: 1,
 
   apiVersion: 'extensions/v1beta1',
   kind: 'Deployment',
@@ -17,7 +18,7 @@
     name: $.name,
   },
   spec: {
-    replicas: 1,
+    replicas: $.replicas,
     selector: {
       matchLabels: $.labels,
     },
