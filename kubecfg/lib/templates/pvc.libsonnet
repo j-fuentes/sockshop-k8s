@@ -7,6 +7,7 @@
   storage:: error '.storage' + required,
 
   // Definition
+  namespace:: null,
   selector:: null,
   volumeName:: null,
   storageClassName:: null,
@@ -14,6 +15,7 @@
   apiVersion: 'core/v1',
   kind: 'PersistentVolumeClain',
   metadata: {
+    [if $.namespace != null then 'namespace']: $.namespace,
     name: $.name,
   },
   spec: {

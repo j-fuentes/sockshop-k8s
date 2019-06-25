@@ -12,10 +12,12 @@ local containerSec = import '../mixins/container_security.libsonnet';
   labels:: error '.labels' + required,
 
   // Definition
+  namespace:: null,
   image:: 'redis:5.0.5',
   port:: 6379,
 
   deploy: deploymentTpl + {
+    namespace: $.namespace,
     name: $.name,
     labels: $.labels,
     metadata+:{
@@ -34,6 +36,7 @@ local containerSec = import '../mixins/container_security.libsonnet';
   },
 
   svc: serviceTpl + {
+    namespace: $.namespace,
     name: $.name,
     selector: $.labels,
     ports: [

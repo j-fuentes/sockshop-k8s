@@ -7,10 +7,12 @@
   containers:: error '.containers' + required,
 
   // Definition
+  namespace:: null,
   volumes:: [],
   initContainers:: [],
 
   metadata: {
+    [if $.namespace != null then 'namespace']: $.namespace,
     name: $.name,
   },
   spec: {

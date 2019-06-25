@@ -8,11 +8,13 @@
   selector:: error '.selector' + required,
 
   // Definition
+  namespace:: null,
   type:: 'ClusterIP',
 
   apiVersion: 'v1',
   kind: 'Service',
   metadata: {
+    [if $.namespace != null then 'namespace']: $.namespace,
     name: $.name,
   },
   spec: {

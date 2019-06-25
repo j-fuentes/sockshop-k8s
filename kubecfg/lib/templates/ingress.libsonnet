@@ -8,9 +8,12 @@
   servicePort:: error '.servicePort' + required,
 
   // Definition
+  namespace:: null,
+
   apiVersion: 'extensions/v1beta1',
   kind: 'Ingress',
   metadata: {
+    [if $.namespace != null then 'namespace']: $.namespace,
     name: $.name,
   },
   spec: {

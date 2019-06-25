@@ -8,6 +8,7 @@
   containers:: error '.containers' + required,
 
   // Definition
+  namespace:: null,
   volumes:: [],
   initContainers:: [],
   replicas:: 1,
@@ -15,6 +16,7 @@
   apiVersion: 'extensions/v1beta1',
   kind: 'Deployment',
   metadata: {
+    [if $.namespace != null then 'namespace']: $.namespace,
     name: $.name,
     labels: $.labels,
   },

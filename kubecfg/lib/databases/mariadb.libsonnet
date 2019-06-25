@@ -15,6 +15,7 @@ local containerSec = import '../mixins/container_security.libsonnet';
   dbName:: error '.dbName' + required,
 
   // Definition
+  namespace:: null,
   image:: 'mysql:5.7',
   port:: 3306,
   pvc:: null,
@@ -28,6 +29,7 @@ local containerSec = import '../mixins/container_security.libsonnet';
   ],
 
   statefulset: statefulsetTpl + {
+    namespace: $.namespace,
     name: $.name,
     labels: $.labels,
     metadata+:{
@@ -66,6 +68,7 @@ local containerSec = import '../mixins/container_security.libsonnet';
   },
 
   svc: serviceTpl + {
+    namespace: $.namespace,
     name: $.name,
     selector: $.labels,
     ports: [

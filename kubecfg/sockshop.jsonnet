@@ -1,4 +1,5 @@
 // Templates
+local namespaceTpl = import 'lib/templates/namespace.libsonnet';
 local containerTpl = import 'lib/templates/container.libsonnet';
 local deploymentTpl = import 'lib/templates/deployment.libsonnet';
 local serviceTpl = import 'lib/templates/service.libsonnet';
@@ -21,10 +22,14 @@ local commonLabels = {
 // whether the app is exposed to the world or not
 local public = true;
 
-////
+local namespace = 'sockshop';
 
 // Resources
 {
+  namespace: namespaceTpl + {
+    name: namespace,
+  },
+
   frontend: {
     local frontendLabels = {
       tier: 'frontend',
@@ -32,6 +37,7 @@ local public = true;
     } + commonLabels,
 
     deploy: deploymentTpl + {
+      namespace: namespace,
       name: 'frontend',
       labels: frontendLabels,
       containers: [
@@ -51,6 +57,7 @@ local public = true;
     },
 
     svc: serviceTpl + {
+      namespace: namespace,
       name: 'frontend',
       // The native GKE Ingress controller only supports NodePort services
       type: 'NodePort',
@@ -65,12 +72,14 @@ local public = true;
     },
 
     ing: if public then ingressTpl + {
+      namespace: namespace,
       name: 'frontend-ing',
       serviceName: $.frontend.svc.name,
       servicePort: 'web',
     },
 
     'session-db': redisTpl + {
+      namespace: namespace,
       name: 'session-db',
       labels: frontendLabels + { tier2: 'session-db' },
     },
@@ -87,6 +96,7 @@ local public = true;
     local dbName = 'catalogue',
 
     deploy: deploymentTpl + {
+      namespace: namespace,
       name: 'catalogue',
       labels: catalogueLabels,
       containers: [
@@ -105,6 +115,7 @@ local public = true;
     },
 
     svc: serviceTpl + {
+      namespace: namespace,
       name: 'catalogue',
       selector: catalogueLabels,
       ports: [
@@ -117,6 +128,7 @@ local public = true;
     },
 
     db: mariadbTpl + {
+      namespace: namespace,
       name: 'catalogue-db',
       labels: catalogueLabels + { tier2: 'db' },
       dbUser: dbUser,
@@ -143,6 +155,7 @@ local public = true;
     local dbName = null,
 
     deploy:  deploymentTpl + {
+      namespace: namespace,
       name: 'carts',
       labels: cartsLabels,
       containers: [
@@ -184,6 +197,7 @@ local public = true;
     },
 
     svc: serviceTpl + {
+      namespace: namespace,
       name: 'carts',
       selector: cartsLabels,
       ports: [
@@ -196,6 +210,7 @@ local public = true;
     },
 
     db: mongoTpl + {
+      namespace: namespace,
       name: 'carts-db',
       labels: cartsLabels + { tier2: 'db' },
       dbUser: dbUser,
