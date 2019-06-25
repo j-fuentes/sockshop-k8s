@@ -25,6 +25,7 @@ local serviceTpl = import '../templates/service.libsonnet';
         ports: [
           { containerPort: $.port },
         ],
+        probeExecCommand: ['sh', '-c', 'exec redis-cli ping'],
       },
     ],
   },
