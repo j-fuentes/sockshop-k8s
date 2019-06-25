@@ -1,6 +1,9 @@
+// templates
 local containerTpl = import '../templates/container.libsonnet';
 local deploymentTpl = import '../templates/deployment.libsonnet';
 local serviceTpl = import '../templates/service.libsonnet';
+// mixins
+local containerSec = import '../mixins/container_security.libsonnet';
 
 {
   // Required inputs
@@ -26,7 +29,7 @@ local serviceTpl = import '../templates/service.libsonnet';
           { containerPort: $.port },
         ],
         probeExecCommand: ['sh', '-c', 'exec redis-cli ping'],
-      },
+      } + containerSec.capabilities.dropAll() + containerSec.filesystem.readOnly() + containerSec.user.nonRoot(),
     ],
   },
 

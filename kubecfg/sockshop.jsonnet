@@ -6,10 +6,8 @@ local ingressTpl = import 'lib/templates/ingress.libsonnet';
 local pvcTpl = import 'lib/templates/pvc.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 local redisTpl = import 'lib/databases/redis.libsonnet';
-////
 // mixins
 local containerSec = import 'lib/mixins/container_security.libsonnet';
-////
 
 // Params
 
@@ -106,7 +104,8 @@ local public = true;
             { containerPort: 80 },
           ],
           probeHttpGet: { path: '/health', port: 80 },
-        },
+        } + containerSec.capabilities.dropAll() + containerSec.capabilities.add(['NET_BIND_SERVICE'])
+        + containerSec.filesystem.readOnly() + containerSec.user.nonRoot(),
       ],
     },
 
