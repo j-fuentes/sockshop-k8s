@@ -85,7 +85,7 @@ local public = true;
     } + commonLabels,
 
     local dbUser = 'catalogue',
-    local dbPassword = 'very-secure-password',
+    local dbPassword = std.extVar('catalogue.dbPassword'),
     local dbName = 'catalogue',
 
     deploy: deploymentTpl + {
