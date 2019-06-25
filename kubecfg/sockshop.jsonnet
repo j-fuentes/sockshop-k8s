@@ -7,6 +7,9 @@ local pvcTpl = import 'lib/templates/pvc.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 local redisTpl = import 'lib/databases/redis.libsonnet';
 ////
+// mixins
+local containerSec = import 'lib/mixins/container_security.libsonnet';
+////
 
 // Params
 
@@ -47,7 +50,7 @@ local public = true;
           env: [
             { name: 'SESSION_REDIS', value: 'true' },
           ],
-        },
+        } + containerSec.capabilities.dropAll() + containerSec.filesystem.readOnly() + containerSec.user.nonRoot(),
       ],
     },
 
