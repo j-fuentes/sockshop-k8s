@@ -9,6 +9,7 @@
   // Definition
   selector:: null,
   volumeName:: null,
+  storageClassName:: null,
 
   apiVersion: 'core/v1',
   kind: 'PersistentVolumeClain',
@@ -18,6 +19,7 @@
   spec: {
     volumeMode: 'Filesystem',
     accessModes: ['ReadWriteOnce'],
+    [if $.storageClassName != null then 'storageClassName']: $.storageClassName,
     resources: {
       requests: {
         storage: $.storage,

@@ -3,7 +3,6 @@ local containerTpl = import 'lib/templates/container.libsonnet';
 local deploymentTpl = import 'lib/templates/deployment.libsonnet';
 local serviceTpl = import 'lib/templates/service.libsonnet';
 local ingressTpl = import 'lib/templates/ingress.libsonnet';
-local pvTpl = import 'lib/templates/pv.libsonnet';
 local pvcTpl = import 'lib/templates/pvc.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 local redisTpl = import 'lib/databases/redis.libsonnet';
@@ -131,21 +130,8 @@ local public = true;
       pvc: pvcTpl + {
         name: 'catalogue-db',
         storage: '20Gi',
-        // selector: {
-        //   matchLabels: $.catalogue.db.labels,
-        // },
+        storageClassName: 'standard',
       },
-      // pv: pvTpl + {
-      //   name: 'catalogue-db',
-      //   storage: $.catalogue.db.pvc.storage,
-      //   labels: $.catalogue.db.labels,
-      //   spec+: {
-      //     gcePersistentDisk: {
-      //       fsType: 'ext4',
-      //       pdName: 'sockshop-catalogue-db',
-      //     },
-      //   },
-      // },
     },
   },
 
