@@ -4,7 +4,7 @@ local serviceTpl = import '../templates/service.libsonnet';
 
 {
   // Required inputs
-  local required = ' in a service is required',
+  local required = ' in a mariadb is required',
   name:: error '.name' + required,
   labels:: error '.labels' + required,
   dbUser:: error '.dbUser' + required,
@@ -24,7 +24,7 @@ local serviceTpl = import '../templates/service.libsonnet';
     },
   ],
 
-  deploy: statefulsetTpl + {
+  statefulset: statefulsetTpl + {
     name: $.name,
     labels: $.labels,
     metadata+:{

@@ -6,6 +6,7 @@ local ingressTpl = import 'lib/templates/ingress.libsonnet';
 local pvTpl = import 'lib/templates/pv.libsonnet';
 local pvcTpl = import 'lib/templates/pvc.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
+local redisTpl = import 'lib/databases/redis.libsonnet';
 ////
 
 // Params
@@ -26,6 +27,7 @@ local public = true;
   frontend: {
     local frontendLabels = {
       tier: 'frontend',
+      tier2: 'server',
     } + commonLabels,
 
     deploy: deploymentTpl + {
@@ -43,6 +45,9 @@ local public = true;
             { containerPort: 8079 },
           ],
           probeHttpGet: { path: '/', port: 8079 },
+          env: [
+            { name: 'SESSION_REDIS', value: 'true' },
+          ],
         },
       ],
     },
@@ -65,6 +70,11 @@ local public = true;
       name: 'frontend-ing',
       serviceName: $.frontend.svc.name,
       servicePort: 'web',
+    },
+
+    'session-db': redisTpl + {
+      name: 'session-db',
+      labels: frontendLabels + { tier2: 'session-db' },
     },
   },
 
@@ -112,10 +122,7 @@ local public = true;
 
     db: mariadbTpl + {
       name: 'catalogue-db',
-      labels: {
-        tier: 'catalogue',
-        tier2: 'db',
-      } + commonLabels,
+      labels: catalogueLabels + { tier2: 'db' },
       dbUser: dbUser,
       dbPassword: dbPassword,
       dbName: dbName,
