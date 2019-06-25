@@ -8,12 +8,14 @@
 
   // Definition
   probeHttpGet:: null,
+  probeExecCommand:: null,
 
   ports: [],
   env: [],
-  livenessProbe: if $.probeHttpGet != null then {
+  livenessProbe: if self.probeHttpGet != null || self.probeExecCommand != null then {
     failureThreshold: 2,
-    httpGet: $.probeHttpGet,
+    [if $.probeHttpGet != null then 'httpGet']: $.probeHttpGet,
+    [if $.probeExecCommand != null then 'exec']: { command: $.probeExecCommand },
     initialDelaySeconds: 15,
     periodSeconds: 10,
     successThreshold: 1,

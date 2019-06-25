@@ -57,6 +57,7 @@ local serviceTpl = import '../templates/service.libsonnet';
           { containerPort: $.port },
         ],
         [if $.volume != null then 'volumeMounts']: $.volumeMounts,
+        probeExecCommand: ['sh', '-c', 'exec mysqladmin status'],
       },
     ],
   },
