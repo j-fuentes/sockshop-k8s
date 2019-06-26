@@ -1,0 +1,752 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sockshop
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: sockshop
+    release: demo
+    tier: carts
+    tier2: server
+  name: carts
+  namespace: sockshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: carts
+      tier2: server
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sockshop
+        release: demo
+        tier: carts
+        tier2: server
+      name: carts
+    spec:
+      containers:
+      - env:
+        - name: JAVA_OPTS
+          value: -Xms64m -Xmx128m -XX:PermSize=32m -XX:MaxPermSize=64m -XX:+UseG1GC
+            -Djava.security.egd=file:/dev/urandom
+        image: weaveworksdemos/carts:0.4.8
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: carts
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      initContainers: []
+      restartPolicy: Always
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: tmp
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: carts
+  namespace: sockshop
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sockshop
+          release: demo
+          tier: frontend
+          tier2: server
+  podSelector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: carts
+      tier2: server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts
+  namespace: sockshop
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: 80
+  selector:
+    app: sockshop
+    release: demo
+    tier: carts
+    tier2: server
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: carts-db
+  namespace: sockshop
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sockshop
+          release: demo
+          tier: carts
+          tier2: server
+  podSelector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: carts
+      tier2: db
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: sockshop
+    release: demo
+    tier: carts
+    tier2: db
+  name: carts-db
+  namespace: sockshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: carts
+      tier2: db
+  serviceName: carts-db
+  template:
+    metadata:
+      labels:
+        app: sockshop
+        release: demo
+        tier: carts
+        tier2: db
+      name: carts-db
+    spec:
+      containers:
+      - env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: null
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: null
+        - name: MONGO_INITDB_DATABASE
+          value: null
+        image: mongo:4.1-bionic
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+          failureThreshold: 2
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: db
+        ports:
+        - containerPort: 27017
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+          failureThreshold: 2
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        volumeMounts:
+        - mountPath: /data/db
+          name: cart-db
+      initContainers: []
+      restartPolicy: Always
+      volumes:
+      - name: cart-db
+  volumeClaimTemplates:
+  - apiVersion: core/v1
+    kind: PersistentVolumeClain
+    metadata:
+      name: cart-db
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+      storageClassName: standard
+      volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts-db
+  namespace: sockshop
+spec:
+  ports:
+  - name: mongo
+    port: 27017
+    targetPort: 27017
+  selector:
+    app: sockshop
+    release: demo
+    tier: carts
+    tier2: db
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: sockshop
+    release: demo
+    tier: catalogue
+    tier2: server
+  name: catalogue
+  namespace: sockshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: catalogue
+      tier2: server
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sockshop
+        release: demo
+        tier: catalogue
+        tier2: server
+      name: catalogue
+    spec:
+      containers:
+      - command:
+        - /app
+        - -port=80
+        - -DSN=catalogue:very-secure-password@tcp(catalogue-db:3306)/catalogue
+        env: []
+        image: weaveworksdemos/catalogue:0.3.5
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: catalogue
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+      initContainers: []
+      restartPolicy: Always
+      volumes: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalogue
+  namespace: sockshop
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sockshop
+          release: demo
+          tier: frontend
+          tier2: server
+  podSelector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: catalogue
+      tier2: server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue
+  namespace: sockshop
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: 80
+  selector:
+    app: sockshop
+    release: demo
+    tier: catalogue
+    tier2: server
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue-db
+  namespace: sockshop
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+  selector:
+    app: sockshop
+    release: demo
+    tier: catalogue
+    tier2: db
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalogue-db
+  namespace: sockshop
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sockshop
+          release: demo
+          tier: catalogue
+          tier2: server
+  podSelector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: catalogue
+      tier2: db
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: sockshop
+    release: demo
+    tier: catalogue
+    tier2: db
+  name: catalogue-db
+  namespace: sockshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: catalogue
+      tier2: db
+  serviceName: catalogue-db
+  template:
+    metadata:
+      labels:
+        app: sockshop
+        release: demo
+        tier: catalogue
+        tier2: db
+      name: catalogue-db
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_USER
+          value: catalogue
+        - name: MYSQL_PASSWORD
+          value: very-secure-password
+        - name: MYSQL_DATABASE
+          value: catalogue
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "true"
+        image: weaveworksdemos/catalogue-db:0.3.5
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - exec mysqladmin status
+          failureThreshold: 2
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: db
+        ports:
+        - containerPort: 3306
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - exec mysqladmin status
+          failureThreshold: 2
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: catalogue-db
+      initContainers:
+      - command:
+        - bash
+        - -c
+        - if [ ! -d '/var/lib/mysql/mysql' ]; then rm -rf /var/lib/mysql/lost+found;
+          fi
+        env: []
+        image: bash:5.0.7
+        livenessProbe: null
+        name: prepare-volume
+        ports: []
+        readinessProbe: null
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: catalogue-db
+      restartPolicy: Always
+      volumes:
+      - name: catalogue-db
+  volumeClaimTemplates:
+  - apiVersion: core/v1
+    kind: PersistentVolumeClain
+    metadata:
+      name: catalogue-db
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+      storageClassName: standard
+      volumeMode: Filesystem
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: sockshop
+    release: demo
+    tier: frontend
+    tier2: server
+  name: frontend
+  namespace: sockshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: frontend
+      tier2: server
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sockshop
+        release: demo
+        tier: frontend
+        tier2: server
+      name: frontend
+    spec:
+      containers:
+      - env:
+        - name: SESSION_REDIS
+          value: "true"
+        image: weaveworksdemos/front-end:0.3.12
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 8079
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: frontend
+        ports:
+        - containerPort: 8079
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 8079
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+      initContainers: []
+      restartPolicy: Always
+      volumes: []
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: frontend-ing
+  namespace: sockshop
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: frontend
+          servicePort: web
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: sockshop
+    release: demo
+    tier: frontend
+    tier2: session-db
+  name: session-db
+  namespace: sockshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: frontend
+      tier2: session-db
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sockshop
+        release: demo
+        tier: frontend
+        tier2: session-db
+      name: session-db
+    spec:
+      containers:
+      - env: []
+        image: redis:5.0.5
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - exec redis-cli ping
+          failureThreshold: 2
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: redis
+        ports:
+        - containerPort: 6379
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - exec redis-cli ping
+          failureThreshold: 2
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+      initContainers: []
+      restartPolicy: Always
+      volumes: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: session-db
+  namespace: sockshop
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sockshop
+          release: demo
+          tier: frontend
+          tier2: server
+  podSelector:
+    matchLabels:
+      app: sockshop
+      release: demo
+      tier: frontend
+      tier2: session-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: session-db
+  namespace: sockshop
+spec:
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  selector:
+    app: sockshop
+    release: demo
+    tier: frontend
+    tier2: session-db
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: sockshop
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: 8079
+  selector:
+    app: sockshop
+    release: demo
+    tier: frontend
+    tier2: server
+  type: NodePort
