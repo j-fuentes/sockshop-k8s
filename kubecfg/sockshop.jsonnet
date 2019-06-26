@@ -5,6 +5,7 @@ local deploymentTpl = import 'lib/templates/deployment.libsonnet';
 local serviceTpl = import 'lib/templates/service.libsonnet';
 local ingressTpl = import 'lib/templates/ingress.libsonnet';
 local pvcTpl = import 'lib/templates/pvc.libsonnet';
+local networkpolicyTpl = import 'lib/templates/networkpolicy.libsonnet';
 local mariadbTpl = import 'lib/databases/mariadb.libsonnet';
 local redisTpl = import 'lib/databases/redis.libsonnet';
 local mongoTpl = import 'lib/databases/mongo.libsonnet';
@@ -26,6 +27,8 @@ local namespace = 'sockshop';
 
 // Resources
 {
+  local netpolAllowFrontendIngress = {from: [{ podSelector: { matchLabels: $.frontend.deploy.labels } }]},
+
   namespace: namespaceTpl + {
     name: namespace,
   },
@@ -82,6 +85,13 @@ local namespace = 'sockshop';
       namespace: namespace,
       name: 'session-db',
       labels: frontendLabels + { tier2: 'session-db' },
+    } + {
+      netpol: networkpolicyTpl + {
+        namespace: namespace,
+        name: 'session-db',
+        podSelector: { matchLabels: $.frontend['session-db'].labels },
+        ingress: [netpolAllowFrontendIngress],
+      },
     },
   },
 
@@ -140,6 +150,20 @@ local namespace = 'sockshop';
         storage: '20Gi',
         storageClassName: 'standard',
       },
+    } + {
+      netpol: networkpolicyTpl + {
+        namespace: namespace,
+        name: 'catalogue-db',
+        podSelector: { matchLabels: $.catalogue.db.labels },
+        ingress: [{ from: [{ podSelector: { matchLabels: $.catalogue.deploy.labels } }] }],
+      },
+    },
+
+    netpol: networkpolicyTpl + {
+      namespace: namespace,
+      name: 'catalogue',
+      podSelector: { matchLabels: $.catalogue.deploy.labels },
+      ingress: [netpolAllowFrontendIngress],
     },
   },
 
@@ -221,6 +245,20 @@ local namespace = 'sockshop';
         storage: '20Gi',
         storageClassName: 'standard',
       },
+    } + {
+      netpol: networkpolicyTpl + {
+        namespace: namespace,
+        name: 'carts-db',
+        podSelector: { matchLabels: $.carts.db.labels },
+        ingress: [{ from: [{ podSelector: { matchLabels: $.carts.deploy.labels } }] }],
+      },
+    },
+
+    netpol: networkpolicyTpl + {
+      namespace: namespace,
+      name: 'carts',
+      podSelector: { matchLabels: $.carts.deploy.labels },
+      ingress: [netpolAllowFrontendIngress],
     },
   },
 
