@@ -48,3 +48,9 @@ $ make
 $ # deploy with default EXT_VARS
 $ make deploy
 ```
+
+# Caveats
+
+**NetworkPolicies and GKE**
+
+This solution makes use of NetworkPolicies in order to restric the communication between pods to the strictly necessary. If you are using GKE, [you might need to enable that feature in your cluster](https://cloud.google.com/kubernetes-engine/docs/how-to/network-policy).
